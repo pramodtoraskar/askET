@@ -1,0 +1,39 @@
+# Ask ET - AI-powered learning assistant for Red Hat Emerging Technologies
+# Core dependencies for RAG-based chatbot
+
+# LangChain and RAG components
+langchain==0.1.0
+langchain-google-genai==0.0.5
+langchain-community==0.0.10
+
+# Vector database
+faiss-cpu==1.7.4
+
+# Google Gemini integration
+google-generativeai==0.3.2
+
+# Text processing
+tiktoken==0.5.2
+
+# Data processing
+pandas==2.1.4
+numpy==1.24.3
+
+# Web scraping (for future content updates)
+requests==2.31.0
+beautifulsoup4==4.12.2
+
+# Configuration and environment
+python-dotenv==1.0.0
+
+# Logging and utilities
+rich==13.7.0
+tqdm==4.66.1
+
+# Optional: Streamlit for web UI (Phase 3)
+# streamlit==1.29.0
+
+# Development dependencies
+pytest==7.4.3
+black==23.11.0
+flake8==6.1.0 
