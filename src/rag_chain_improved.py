@@ -107,8 +107,12 @@ class ImprovedAskETRAGChain:
             with open(metadata_path, 'rb') as f:
                 metadata_dict = pickle.load(f)
             
-            # Extract the actual document metadata
-            self.metadata = metadata_dict.get('chunk_metadata', [])
+            # Handle both dictionary and list formats
+            if isinstance(metadata_dict, dict):
+                self.metadata = metadata_dict.get('chunk_metadata', [])
+            else:
+                # Direct list format
+                self.metadata = metadata_dict
             
             logger.info(f"Loaded FAISS index with {self.index.ntotal} vectors")
             logger.info(f"Loaded metadata for {len(self.metadata)} documents")
@@ -214,8 +218,36 @@ Answer:"""
             # Filter out low-quality matches
             relevant_docs = [doc for doc in relevant_docs if doc.get('score', 0) > 0.3]
             
-            logger.info(f"Found {len(relevant_docs)} relevant documents")
-            return relevant_docs
+            # Deduplicate by URL to ensure we get different blogs
+            unique_docs = []
+            seen_urls = set()
+            seen_titles = set()
+            
+            for doc in relevant_docs:
+                url = doc.get('url', '')
+                title = doc.get('title', '')
+                
+                # If we have a URL and haven't seen it, add it
+                if url and url not in seen_urls:
+                    unique_docs.append(doc)
+                    seen_urls.add(url)
+                    if title:
+                        seen_titles.add(title)
+                # If no URL but we have a title and haven't seen it, add it
+                elif title and title not in seen_titles:
+                    unique_docs.append(doc)
+                    seen_titles.add(title)
+                # If neither URL nor title, add it anyway (might be different content)
+                elif not url and not title:
+                    unique_docs.append(doc)
+            
+            # If we still have no unique docs, return the original list (don't filter everything out)
+            if not unique_docs and relevant_docs:
+                logger.info(f"No unique blogs found, returning original {len(relevant_docs)} documents")
+                return relevant_docs
+            
+            logger.info(f"Found {len(relevant_docs)} relevant documents, {len(unique_docs)} unique blogs")
+            return unique_docs
             
         except Exception as e:
             logger.error(f"Error getting relevant documents: {e}")
@@ -295,12 +327,34 @@ Content: {content}
         sources = []
         
         for doc in documents:
-            title = doc.get('title', 'Unknown Title')
-            source = doc.get('source', 'Unknown source')
-            score = doc.get('score', 0)
+            # Try different possible field names for title
+            title = (
+                doc.get('title') or 
+                doc.get('name') or 
+                doc.get('author') or 
+                'Unknown Title'
+            )
             
-            source_info = f"• {title} ({source}) - Relevance: {score:.3f}"
-            sources.append(source_info)
+            # Try different possible field names for source
+            source = (
+                doc.get('source') or 
+                doc.get('url') or 
+                doc.get('author') or 
+                doc.get('category') or 
+                'Unknown source'
+            )
+            
+            # Get score with fallback
+            score = doc.get('score', doc.get('similarity_score', 0))
+            
+            # Only add if we have meaningful data
+            if title != 'Unknown Title' or source != 'Unknown source':
+                source_info = f"• {title} ({source}) - Relevance: {score:.3f}"
+                sources.append(source_info)
+        
+        # If no meaningful sources found, return empty
+        if not sources:
+            return ""
         
         return "\n".join(sources)
     

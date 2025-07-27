@@ -52,11 +52,11 @@ class DataLoader:
             for blog in data.get('blogs', []):
                 try:
                     blog_entry = BlogEntry(
-                        title=blog.get('metadata', {}).get('title', ''),
-                        author=blog.get('metadata', {}).get('author', ''),
-                        date=blog.get('metadata', {}).get('date', ''),
-                        url=blog.get('metadata', {}).get('url', ''),
-                        category=blog.get('metadata', {}).get('category', ''),
+                        title=blog.get('title', ''),
+                        author=blog.get('author', ''),
+                        date=blog.get('date', ''),
+                        url=blog.get('url', ''),
+                        category=blog.get('category', ''),
                         content=blog.get('content', {}).get('introduction', ''),
                         metadata=blog
                     )
