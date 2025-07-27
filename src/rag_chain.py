@@ -303,7 +303,7 @@ def create_rag_chain() -> AskETRAGChain:
 
 if __name__ == "__main__":
     # Test the RAG chain
-    print("🧪 Testing RAG Chain...")
+    print("Testing RAG Chain...")
     
     try:
         rag_chain = create_rag_chain()

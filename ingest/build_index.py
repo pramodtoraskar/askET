@@ -236,11 +236,11 @@ def main():
     try:
         builder = IndexBuilder()
         builder.build_index()
-        print("✅ Index built successfully!")
+        print("Index built successfully!")
         
     except Exception as e:
         logger.error(f"Error building index: {e}")
-        print(f"❌ Error building index: {e}")
+        print(f"Error building index: {e}")
         return 1
     
     return 0
