@@ -59,37 +59,28 @@ class EnhancedResponseFormatter:
         """Extract blog information from retrieved documents"""
         blog_info = []
         
-        print(f"DEBUG: Processing {len(documents)} documents")
-        
-        for i, doc in enumerate(documents):
-            print(f"DEBUG: Processing document {i+1}:")
-            print(f"  - Source: {doc.get('source', 'No source')}")
-            print(f"  - Title: {doc.get('title', 'No title')}")
-            print(f"  - Content length: {len(doc.get('content', ''))}")
-            
+        for doc in documents:
             source = doc.get('source', '')
             title = doc.get('title', '')
             content = doc.get('content', '')
             
             # Extract blog URL if present
             blog_url = self._extract_blog_url(source, content)
-            print(f"  - Extracted URL: {blog_url}")
             
             # Find matching blog metadata
             blog_metadata = self._find_blog_metadata(blog_url, title)
-            print(f"  - Found metadata: {blog_metadata.get('title', 'No metadata') if blog_metadata else 'None'}")
             
-            # If we have empty content but good metadata, use metadata
-            if not title and not content and blog_metadata:
-                title = blog_metadata.get('title', '')
-                # Try to get content from metadata
-                if 'content' in blog_metadata and isinstance(blog_metadata['content'], dict):
-                    content = blog_metadata['content'].get('summary', '')
-                    if not content:
-                        # Try to get from introduction
-                        content = blog_metadata['content'].get('introduction', '')
-                if not blog_url:
-                    blog_url = blog_metadata.get('url', '')
+                    # If we have empty content but good metadata, use metadata
+        if not title and not content and blog_metadata:
+            title = blog_metadata.get('title', '')
+            # Try to get content from metadata
+            if 'content' in blog_metadata and isinstance(blog_metadata['content'], dict):
+                content = blog_metadata['content'].get('summary', '')
+                if not content:
+                    # Try to get from introduction
+                    content = blog_metadata['content'].get('introduction', '')
+            if not blog_url:
+                blog_url = blog_metadata.get('url', '')
             
             # Let the system learn naturally from the knowledge base
             # No artificial filtering - let relevance scoring handle it
@@ -121,7 +112,7 @@ class EnhancedResponseFormatter:
                                     content = exact_match['content'].get('introduction', '')
                             blog_metadata = exact_match
             
-            blog_entry = {
+            blog_info.append({
                 'title': title,
                 'url': blog_url,
                 'summary': self._generate_blog_summary(content, title),
@@ -130,12 +121,8 @@ class EnhancedResponseFormatter:
                 'category': blog_metadata.get('category', ''),
                 'relevance_score': doc.get('score', 0),
                 'content_preview': content[:300] + "..." if len(content) > 300 else content
-            }
-            
-            print(f"  - Adding blog: {blog_entry['title']}")
-            blog_info.append(blog_entry)
+            })
         
-        print(f"DEBUG: Total blogs extracted: {len(blog_info)}")
         return blog_info
     
     def _extract_blog_url(self, source: str, content: str) -> str:
@@ -476,11 +463,6 @@ class EnhancedResponseFormatter:
         # Extract blog information
         blog_info = self.extract_blog_info_from_documents(documents, query)
         
-        # Debug: Log the number of documents and extracted blogs
-        print(f"DEBUG: Found {len(documents)} documents, extracted {len(blog_info)} blogs")
-        for i, blog in enumerate(blog_info):
-            print(f"DEBUG: Blog {i+1}: {blog.get('title', 'No title')} - {blog.get('url', 'No URL')}")
-        
         # Enhanced fallback logic for failed scenarios
         if not blog_info and query:
             # Try exact matching first
@@ -513,50 +495,28 @@ class EnhancedResponseFormatter:
                             'content_preview': ''
                         })
         
-        # Remove duplicate blogs based on URL or title (less aggressive)
+        # Remove duplicate blogs based on URL or title
         unique_blogs = []
         seen_urls = set()
         seen_titles = set()
-        
-        print(f"DEBUG: Starting deduplication of {len(blog_info)} blogs")
-        
-        for i, blog in enumerate(blog_info):
+        for blog in blog_info:
             # Check if we've already seen this URL or title
             blog_url = blog.get('url', '')
             blog_title = blog.get('title', '')
-            
-            # Normalize title for comparison (remove common variations)
-            normalized_title = blog_title.lower().strip() if blog_title else ''
-            
-            print(f"DEBUG: Deduplicating blog {i+1}: {blog_title}")
-            print(f"  - URL: {blog_url}")
-            print(f"  - Normalized title: {normalized_title}")
-            print(f"  - Seen URLs: {len(seen_urls)}")
-            print(f"  - Seen titles: {len(seen_titles)}")
             
             # If we have a URL and haven't seen it, add it
             if blog_url and blog_url not in seen_urls:
                 unique_blogs.append(blog)
                 seen_urls.add(blog_url)
-                if normalized_title:
-                    seen_titles.add(normalized_title)
-                print(f"  - ADDED (new URL)")
+                if blog_title:
+                    seen_titles.add(blog_title)
             # If no URL but we have a title and haven't seen it, add it
-            elif normalized_title and normalized_title not in seen_titles:
+            elif blog_title and blog_title not in seen_titles:
                 unique_blogs.append(blog)
-                seen_titles.add(normalized_title)
-                print(f"  - ADDED (new title)")
-            # If neither URL nor title match, add it anyway (might be different content)
-            elif not blog_url and not normalized_title:
-                unique_blogs.append(blog)
-                print(f"  - ADDED (no URL/title)")
-            else:
-                print(f"  - SKIPPED (duplicate)")
+                seen_titles.add(blog_title)
         
-        print(f"DEBUG: After deduplication: {len(unique_blogs)} unique blogs")
-        
-        # Limit to top 5 unique blogs (increased from 3)
-        blog_info = unique_blogs[:5]
+        # Limit to top 3 unique blogs
+        blog_info = unique_blogs[:3]
         
         # Find related projects
         blog_titles = [blog['title'] for blog in blog_info if blog['title']]
@@ -579,46 +539,66 @@ class EnhancedResponseFormatter:
     
     def _create_formatted_output(self, answer: str, blogs: List[Dict[str, Any]], 
                                 projects: List[Dict[str, Any]]) -> str:
-        """Create a nicely formatted output string"""
+        """Create a compact formatted output string"""
         
         output_parts = []
         
-        # Add the main answer
-        output_parts.append("## Answer")
+        # Add the main answer (compact)
         output_parts.append(answer)
         output_parts.append("")
         
-        # Add blog summaries and links
+        # Add blog summaries and links (compact format)
         if blogs:
-            output_parts.append("## Related Blog Posts")
+            output_parts.append("**📝 Related Blogs:**")
             for i, blog in enumerate(blogs, 1):
-                output_parts.append(f"### {i}. {blog['title']}")
-                output_parts.append(f"**Author:** {blog['author']}")
-                if blog['date']:
-                    output_parts.append(f"**Date:** {blog['date']}")
-                if blog['category']:
-                    output_parts.append(f"**Category:** {blog['category']}")
-                output_parts.append(f"**Summary:** {blog['summary']}")
-                output_parts.append(f"**[Read Full Blog]({blog['url']})**")
+                # Compact single line format
+                author = blog.get('author', 'Unknown')
+                date = blog.get('date', '')
+                category = blog.get('category', '')
+                
+                # Create compact metadata line
+                metadata_parts = []
+                if author and author != 'Unknown':
+                    metadata_parts.append(f"@{author}")
+                if date:
+                    metadata_parts.append(date)
+                if category:
+                    metadata_parts.append(category)
+                
+                metadata = " • ".join(metadata_parts) if metadata_parts else ""
+                
+                # Compact blog entry
+                if metadata:
+                    output_parts.append(f"{i}. **{blog['title']}** - {metadata}")
+                else:
+                    output_parts.append(f"{i}. **{blog['title']}**")
+                
+                # Short summary (truncated if too long)
+                summary = blog.get('summary', '')
+                if summary and len(summary) > 100:
+                    summary = summary[:97] + "..."
+                if summary:
+                    output_parts.append(f"   {summary}")
                 output_parts.append("")
         
-        # Add related GitHub projects
+        # Add related GitHub projects (compact format)
         if projects:
-            output_parts.append("## Related GitHub Projects")
+            output_parts.append("**🔗 Related Projects:**")
             for i, project in enumerate(projects, 1):
-                output_parts.append(f"### {i}. {project['name']}")
-                output_parts.append(f"**Category:** {project['category']}")
-                output_parts.append(f"**Description:** {project['description']}")
+                # Compact project entry
+                output_parts.append(f"{i}. **{project['name']}** - {project.get('category', 'General')}")
                 
+                # Short description
+                description = project.get('description', '')
+                if description and len(description) > 80:
+                    description = description[:77] + "..."
+                if description:
+                    output_parts.append(f"   {description}")
+                
+                # GitHub links (compact)
                 github_links = project.get('github_links', [])
                 if github_links:
-                    output_parts.append("**GitHub Links:**")
-                    for link in github_links:
-                        output_parts.append(f"[{link}]({link})")
-                
-                project_url = project.get('project_url', '')
-                if project_url:
-                    output_parts.append(f"**[Project Page]({project_url})**")
+                    output_parts.append(f"   GitHub: {', '.join(github_links)}")
                 
                 output_parts.append("")
         
